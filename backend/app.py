@@ -170,6 +170,41 @@ def status():
         })
     except Exception as e:
         return str(e), 500
+    
+@app.route("/admin/containers", methods=["GET"])
+@require_auth
+def list_all_containers():
+    try:
+        output = subprocess.check_output([
+            "docker", "ps", "-a", "--format", "{{.ID}}::{{.Image}}::{{.Status}}::{{.Names}}"
+        ]).decode("utf-8")
+
+        containers = []
+        for line in output.strip().splitlines():
+            container_id, image, status, name = line.split("::")
+            containers.append({
+                "id": container_id,
+                "image": image,
+                "status": status,
+                "name": name
+            })
+        return jsonify({"containers": containers})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/terminate", methods=["POST"])
+@require_auth
+def terminate_selected_containers():
+    data = request.get_json()
+    container_ids = data.get("container_ids", [])
+    if not container_ids:
+        return jsonify({"error": "No container IDs provided"}), 400
+    try:
+        subprocess.run(["docker", "rm", "-f"] + container_ids, check=True)
+        return jsonify({"status": "terminated", "containers": container_ids})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5050)

@@ -3,7 +3,7 @@ import requests
 import os
 st.title("Docker Automation Dashboard")
 
-API_KEY = os.environ.get("API_KEY")
+API_KEY = os.environ.get("API_KEY")  # Ensure you have your API key set in the environment
 API_URL = "http://64.227.136.203:5050"
 
 headers = {"x-api-key": API_KEY}
@@ -14,7 +14,6 @@ include_api = st.checkbox("API Service", value=True)
 include_db = st.checkbox("Postgres DB")
 include_redis = st.checkbox("Redis")
 
-# Session state variables
 if "compose_yaml" not in st.session_state:
     st.session_state["compose_yaml"] = ""
 if "user_id" not in st.session_state:
@@ -90,13 +89,11 @@ if st.session_state["deployed"]:
         else:
             st.warning("No compose file generated.")
 
-# Display assigned ports for user clarity
 if st.session_state["ports"]:
     st.subheader("Your Service Ports")
     for service, port in st.session_state["ports"].items():
         st.write(f"{service}: {port}")
 
-# ---- Call the Hello API after deployment ----
 if st.session_state.get("deployed") and st.session_state.get("ports", {}).get("api"):
     st.subheader("Call Your Deployed API")
     name = st.text_input("Enter your name")
@@ -112,3 +109,52 @@ if st.session_state.get("deployed") and st.session_state.get("ports", {}).get("a
                 st.error(f"API call failed: {api_res.status_code}")
         except Exception as e:
             st.error(f"API call error: {e}")
+
+# Admin Control 
+
+st.sidebar.subheader("Admin Access")
+
+if "admin_authenticated" not in st.session_state:
+    st.session_state["admin_authenticated"] = False
+
+if not st.session_state["admin_authenticated"]:
+    with st.sidebar.form("admin_login"):
+        admin_user = st.text_input("Username")
+        admin_pass = st.text_input("Password", type="password")
+        login_btn = st.form_submit_button("Login")
+        if login_btn:
+            if admin_user == "admin" and admin_pass == "admin":  
+                st.session_state["admin_authenticated"] = True
+                st.success("Logged in as Admin")
+            else:
+                st.error("Invalid credentials")
+else:
+    st.sidebar.success("Admin Mode Enabled")
+
+    st.subheader(" Admin Container Control")
+
+    
+    admin_res = requests.get(f"{API_URL}/admin/containers", headers=headers)
+    if admin_res.ok:
+        containers = admin_res.json()["containers"]
+        selected = []
+        for c in containers:
+            label = f"{c['name']} | {c['image']} | {c['status']}"
+            if st.checkbox(label, key=c["id"]):
+                selected.append(c["id"])
+
+        if st.button("Terminate Selected Containers"):
+            if selected:
+                kill_res = requests.post(
+                    f"{API_URL}/admin/terminate",
+                    headers=headers,
+                    json={"container_ids": selected}
+                )
+                if kill_res.ok:
+                    st.success(f"Terminated containers: {selected}")
+                else:
+                    st.error("Failed to terminate containers")
+            else:
+                st.warning("No containers selected")
+    else:
+        st.error("Failed to fetch container list")
