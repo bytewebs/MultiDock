@@ -4,7 +4,7 @@ import os
 st.title("Docker Automation Dashboard")
 
 API_KEY = os.environ.get("API_KEY")  # Ensure you have your API key set in the environment
-API_URL = "http://64.227.136.203:5050"
+API_URL = "http://49.36.180.69:5050"
 
 headers = {"x-api-key": API_KEY}
 
@@ -13,6 +13,7 @@ st.header("Select Microservices to Launch")
 include_api = st.checkbox("API Service", value=True)
 include_db = st.checkbox("Postgres DB")
 include_redis = st.checkbox("Redis")
+include_ragchatbot = st.checkbox("RAG Chatbot (Govt Schemes)")
 
 if "compose_yaml" not in st.session_state:
     st.session_state["compose_yaml"] = ""
@@ -31,6 +32,7 @@ if st.button("Generate Compose"):
             "include_api": include_api,
             "include_db": include_db,
             "include_redis": include_redis,
+            "include_ragchatbot": include_ragchatbot,
         },
     )
     if res.ok:
@@ -109,6 +111,23 @@ if st.session_state.get("deployed") and st.session_state.get("ports", {}).get("a
                 st.error(f"API call failed: {api_res.status_code}")
         except Exception as e:
             st.error(f"API call error: {e}")
+
+if "ragchatbot" in st.session_state["ports"]:
+    st.subheader("💬 Ask the Govt Scheme Chatbot")
+
+    query = st.text_input("Ask a question (e.g., 'What is Ayushman Bharat?')")
+
+    if query:
+        rag_url = f"http://64.227.136.203:{st.session_state['ports']['ragchatbot']}/chat"
+        try:
+            res = requests.post(rag_url, json={"query": query})
+            if res.ok:
+                st.success("Answer:")
+                st.write(res.json().get("answer", "No response"))
+            else:
+                st.error("Failed to get a response from chatbot")
+        except Exception as e:
+            st.error(f"Exception: {e}")
 
 # Admin Control 
 
