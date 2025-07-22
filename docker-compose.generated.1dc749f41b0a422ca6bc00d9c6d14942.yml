@@ -1,0 +1,6 @@
+services:
+  api:
+    build: /Users/aayushkharbanda/desktop/test1/api
+    ports:
+    - 5005:5000
+version: '3'
