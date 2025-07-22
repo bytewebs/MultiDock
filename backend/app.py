@@ -14,12 +14,23 @@ app = Flask(__name__)
 
 API_KEY = os.environ.get("API_KEY", "supersecret")
 
+<<<<<<< HEAD
 
 def find_free_port(start=5001, end=6000):
     """Find an available port in the range [start, end)"""
     for port in range(start, end):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if s.connect_ex(('localhost', port)) != 0:
+=======
+used_ports = set() 
+def find_free_port(start=5001, end=6000):
+    for port in range(start, end):
+        if port in used_ports:
+            continue
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('localhost', port)) != 0:
+                used_ports.add(port)
+>>>>>>> c6f723d (final commit)
                 return port
     raise RuntimeError("No free port available in range")
 
@@ -40,6 +51,7 @@ def require_auth(f):
 @app.route("/generate_compose", methods=["POST"])
 @require_auth
 def generate_compose():
+<<<<<<< HEAD
     user_id = uuid.uuid4().hex  # <-- NEW!
     body = request.json
     services = {}
@@ -52,12 +64,30 @@ def generate_compose():
         api_port = find_free_port()
         services["api"] = {
             "build": "/root/hello-api/api",
+=======
+    user_id = uuid.uuid4().hex
+    body = request.json
+    services = {}
+    port_map = {}
+
+    # === API Microservice ===
+    if body.get("include_api"):
+        api_port = find_free_port()
+        services["api"] = {
+            "build": os.path.abspath(os.path.join(os.path.dirname(__file__), "../api")),
+>>>>>>> c6f723d (final commit)
             "ports": [f"{api_port}:5000"]
         }
         port_map["api"] = api_port
 
+<<<<<<< HEAD
     if body.get("include_db"):
         db_port = find_free_port(5433, 6000)  # 5432 might be used
+=======
+    # === PostgreSQL Database ===
+    if body.get("include_db"):
+        db_port = find_free_port(5433, 6000)
+>>>>>>> c6f723d (final commit)
         services["db"] = {
             "image": "postgres",
             "environment": {"POSTGRES_PASSWORD": "example"},
@@ -65,6 +95,10 @@ def generate_compose():
         }
         port_map["db"] = db_port
 
+<<<<<<< HEAD
+=======
+    # === Redis ===
+>>>>>>> c6f723d (final commit)
     if body.get("include_redis"):
         redis_port = find_free_port(6380, 7000)
         services["redis"] = {
@@ -73,8 +107,28 @@ def generate_compose():
         }
         port_map["redis"] = redis_port
 
+<<<<<<< HEAD
     compose = {"version": "3", "services": services}
 
+=======
+    # === RAG Chatbot Microservice ===
+    if body.get("include_ragchatbot"):
+        rag_port = find_free_port()
+        services["ragchatbot"] = {
+            "build": os.path.abspath(os.path.join(os.path.dirname(__file__), "../rag-chatbot")),  
+            "ports": [f"{rag_port}:8000"],
+            "env_file": os.path.abspath(os.path.join(os.path.dirname(__file__), "../rag-chatbot/.env")),  
+            "restart": "unless-stopped"
+        }
+        port_map["ragchatbot"] = rag_port
+
+    # === If nothing was selected ===
+    if not services:
+        return jsonify({"error": "No services selected"}), 400
+
+    # === Save compose file ===
+    compose = {"version": "3", "services": services}
+>>>>>>> c6f723d (final commit)
     compose_path = get_compose_path(user_id)
     with open(compose_path, "w") as f:
         yaml.dump(compose, f)
@@ -83,7 +137,11 @@ def generate_compose():
         "compose": yaml.dump(compose),
         "compose_path": compose_path,
         "ports": port_map,
+<<<<<<< HEAD
         "user_id": user_id  # <-- UUID!
+=======
+        "user_id": user_id
+>>>>>>> c6f723d (final commit)
     })
 
 
@@ -170,15 +228,26 @@ def status():
         })
     except Exception as e:
         return str(e), 500
+<<<<<<< HEAD
     
 @app.route("/admin/containers", methods=["GET"])
+=======
+import docker
+client = docker.from_env()
+
+@app.route("/admin/containers", methods=["GET"]) 
+>>>>>>> c6f723d (final commit)
 @require_auth
 def list_all_containers():
     try:
         output = subprocess.check_output([
             "docker", "ps", "-a", "--format", "{{.ID}}::{{.Image}}::{{.Status}}::{{.Names}}"
         ]).decode("utf-8")
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> c6f723d (final commit)
         containers = []
         for line in output.strip().splitlines():
             container_id, image, status, name = line.split("::")
@@ -206,5 +275,9 @@ def terminate_selected_containers():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": str(e)}), 500
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> c6f723d (final commit)
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5050)
