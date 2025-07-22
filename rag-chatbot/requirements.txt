@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+pinecone
+google-generativeai
+transformers
+sentence-transformers
+scikit-learn
+torch
